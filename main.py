@@ -15,8 +15,8 @@ from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
 import seaborn as sns
-import copy
-import random
+
+
 
 sns.set_style('whitegrid')
 plt.style.use("fivethirtyeight")
@@ -95,6 +95,7 @@ unprocessedData = yf.download(yFinanceData, period="60mo")
 unprocessedAdjCloseData = unprocessedData["Adj Close"]
 #Preprocess Data
 data = unprocessedAdjCloseData.dropna()
+dataAll = unprocessedData.dropna()
 
 # Normalize numerical features
 scaler = MinMaxScaler(feature_range=(0, 1))
@@ -160,21 +161,46 @@ plt.xlabel('Data Point')
 plt.ylabel('Scaled Value')  # Remember, you're working with scaled values
 plt.legend()
 plt.show()
-closing_df = data
+
+
 # Make a new tech returns DataFrame
-tech_rets1 = closing_df.pct_change()
+tech_rets1 = data.pct_change()
 tech_rets = tech_rets1.dropna()
 
-
-
+#Plotting a correlation heatmap
 plt.figure(figsize=(25, 15))
 plt.subplot(2, 2, 1)
 sns.heatmap(tech_rets.corr(), annot=False, cmap='summer')
 plt.title('Correlation of stock return')
 plt.show()
 
-closing_df.plot()
+#Plotting close values
+data.plot(linewidth=1.0)
 plt.show()
+
+##Defining and Visualizing Technical Indicators
+#RSI
+def RSI(data, n=14):
+    close = data
+    delta = close.diff()
+    delta = delta[1:]
+    pricesUp = delta.copy()
+    pricesDown = delta.copy()
+    pricesUp[pricesUp < 0] = 0
+    pricesDown[pricesDown > 0] = 0
+    rollUp = pricesUp.rolling(n).mean()
+    rollDown = pricesDown.abs().rolling(n).mean()
+    rs = rollUp / rollDown
+    rsi = 100.0 - (100.0 / (1.0 + rs))
+    return rsi
+
+num_days = 365
+
+#EDIT AAPL TO DESIRED TICKER- MAKE GENERAL LATER
+RSI(data["AAPL"]).plot(linewidth=1.0)
+plt.show()
+
+
 
 
     
