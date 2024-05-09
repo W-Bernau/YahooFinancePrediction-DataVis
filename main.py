@@ -200,7 +200,101 @@ num_days = 365
 RSI(data["AAPL"]).plot(linewidth=1.0)
 plt.show()
 
+#MACD and EMA Indicators
+adj_close_px = data["AAPL"]
+data['26'] = adj_close_px.rolling(window=26).mean() #50 days moving average 
+data['12'] = adj_close_px.rolling(window=12).mean() #100 days moving average 
+MACD = data['12'] - data['26']
+
+plt.figure(figsize=(15,4))
+plt.plot(adj_close_px,linewidth=1.0, label='Adj Close')
+plt.plot(adj_close_px.ewm(span=26, adjust=False).mean(), label='26',linewidth=1.0)
+plt.plot(adj_close_px.ewm(span=12, adjust=False).mean(), label='12',linewidth=1.0)
+plt.title('Exponential Moving Average', fontsize=20)
+
+plt.figure(figsize=(15,4))
+plt.plot(MACD, linewidth=1.0, label='MACD')
+plt.plot(MACD.ewm(span=9, adjust=False).mean(), label='Signal', linewidth=1.0)
+plt.legend()
+
+plt.show()
+
+short_window = 3
+long_window = 14
+
+dataSignals = data["AAPL"]
+
+signals = pd.DataFrame(index=dataSignals.index)
+signals['signalBuy'] = 0.0
+signals['signalShort'] = 0.0
+signals['short_mavg'] = dataSignals.ewm(span=short_window, min_periods=1, adjust=False).mean()
+signals['long_mavg'] = dataSignals.ewm(span=long_window, min_periods=1, adjust=False).mean()
+signals['signalBuy'][short_window:] = np.where(signals['short_mavg'][short_window:] 
+                                            > signals['long_mavg'][short_window:], 1.0, 0)   
+signals['signalShort'][short_window:] = np.where(signals['short_mavg'][short_window:] 
+                                            < signals['long_mavg'][short_window:], 1.0, 0) 
+  
+signals['positionsLong'] = signals['signalBuy'].diff()
+signals['positionsShort'] = signals['signalShort'].diff()
 
 
+# Now plot with the correct period
+fig = plt.figure(figsize=(15,5))
+ax1 = fig.add_subplot(111, ylabel='Price ($)')
 
-    
+# Plot the 'Close' prices
+dataSignals.plot(ax=ax1, color='r', lw=1.)
+
+# Plot the short and long moving averages from 'signals'
+signals[['short_mavg', 'long_mavg']].plot(ax=ax1, lw=1.)
+
+# Plot the buy signals
+ax1.plot(signals.loc[signals.positionsLong == 1.0].index, 
+         signals.short_mavg[signals.positionsLong == 1.0],
+         '^', markersize=10, color='c')
+
+# Plot the sell signals
+ax1.plot(signals.loc[signals.positionsShort == 1.0].index, 
+         signals.short_mavg[signals.positionsShort == 1.0],
+         'v', markersize=10, color='k')
+plt.show()
+
+
+initial_capital= float(100000.0)
+positions = pd.DataFrame(index=signals.index).fillna(0.0)
+positions['Security'] = 100*signals['signalBuy']
+portfolio = positions.multiply(dataSignals, axis=0)
+pos_diff = positions.diff()
+portfolio['holdings'] = (positions.multiply(dataSignals, axis=0)).sum(axis=1)
+
+portfolio['cash'] = initial_capital - (pos_diff.multiply(dataSignals, axis=0)).sum(axis=1).cumsum()
+portfolio['total'] = portfolio['cash'] + portfolio['holdings']
+portfolio['returns'] = portfolio['total'].pct_change()
+
+
+positionsShort = pd.DataFrame(index=signals.index).fillna(0.0)
+positionsShort['Shorts'] = 100*signals['signalShort']
+portfolioShort = positionsShort.multiply(dataSignals, axis=0)
+posShort_diff = positionsShort.diff()
+portfolioShort['shorts'] = (positionsShort.multiply(dataSignals, axis=0)).sum(axis=1)
+portfolio['cash'] = portfolio['cash'] - (posShort_diff.multiply(dataSignals, axis=0)).sum(axis=1).cumsum()
+portfolioShort['total'] = portfolioShort['shorts']
+portfolioShort['returns'] = portfolioShort['total'].pct_change()
+print(portfolioShort.head(500))
+print(portfolio.head(500))
+
+capitalGain = pd.DataFrame(index=signals.index).fillna(0.0)
+capitalGain['total'] = (portfolio['total'] - portfolioShort['total'])
+
+fig = plt.figure(figsize=(15,5))
+ax1 = fig.add_subplot(111, ylabel='Portfolio value in $')
+portfolio['total'].plot(ax=ax1, lw=1.)
+capitalGain['total'].plot(ax=ax1, lw=1.)
+ax1.plot(portfolio.loc[signals.positionsLong == 1.0].index, 
+         portfolio.total[signals.positionsLong == 1.0],
+         '^', markersize=10, color='c')
+ax1.plot(portfolio.loc[signals.positionsShort == 1.0].index, 
+         portfolio.total[signals.positionsShort == 1.0],
+         'v', markersize=10, color='k')
+plt.title('Portfolio Value in Time')
+plt.show()
