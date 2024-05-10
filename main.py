@@ -271,7 +271,7 @@ portfolio['cash'] = initial_capital - (pos_diff.multiply(dataSignals, axis=0)).s
 portfolio['total'] = portfolio['cash'] + portfolio['holdings']
 portfolio['returns'] = portfolio['total'].pct_change()
 
-
+''' 
 positionsShort = pd.DataFrame(index=signals.index).fillna(0.0)
 positionsShort['Shorts'] = 100*signals['signalShort']
 portfolioShort = positionsShort.multiply(dataSignals, axis=0)
@@ -282,14 +282,14 @@ portfolioShort['total'] = portfolioShort['shorts']
 portfolioShort['returns'] = portfolioShort['total'].pct_change()
 print(portfolioShort.head(500))
 print(portfolio.head(500))
-
 capitalGain = pd.DataFrame(index=signals.index).fillna(0.0)
 capitalGain['total'] = (portfolio['total'] - portfolioShort['total'])
+'''
 
 fig = plt.figure(figsize=(15,5))
 ax1 = fig.add_subplot(111, ylabel='Portfolio value in $')
 portfolio['total'].plot(ax=ax1, lw=1.)
-capitalGain['total'].plot(ax=ax1, lw=1.)
+##capitalGain['total'].plot(ax=ax1, lw=1.)
 ax1.plot(portfolio.loc[signals.positionsLong == 1.0].index, 
          portfolio.total[signals.positionsLong == 1.0],
          '^', markersize=10, color='c')
