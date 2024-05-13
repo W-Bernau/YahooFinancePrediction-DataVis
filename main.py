@@ -4,9 +4,9 @@ import requests
 from bs4 import BeautifulSoup # Web Scraping
 import pandas as pd
 from pandas_datareader import data as pdr
-from selenium import webdriver
 import time
 import yfinance as yf
+import tensorflow as tf
 import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 from tensorflow.keras.models import Sequential
@@ -14,6 +14,7 @@ from tensorflow.keras.layers import LSTM, Dense
 from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
+
 import seaborn as sns
 
 
@@ -106,20 +107,19 @@ X = scaled_data[:, :-1]  # Input features (excluding 'Close')
 y = scaled_data[:, -1]   # Target variable ('Close')
 
 # 3. Split data into training and testing sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=2)
 
 # 4. Define the deep learning model
 model = Sequential()
 model.add(LSTM(units=50, activation='relu', return_sequences=True, input_shape=(X_train.shape[1], 1)))
 model.add(LSTM(units=50, activation='relu'))
-model.add(Dense(units=25))
 model.add(Dense(units=1))
 
 # 5. Compile the model
 model.compile(optimizer='adam', loss='mean_squared_error')
 
 # 6. Train the model
-model.fit(X_train, y_train, epochs=100, batch_size=100)
+model.fit(X_train, y_train, epochs=100, batch_size=10)
 
 # 7. Evaluate the model
 loss = model.evaluate(X_test, y_test)
@@ -161,7 +161,6 @@ plt.xlabel('Data Point')
 plt.ylabel('Scaled Value')  # Remember, you're working with scaled values
 plt.legend()
 plt.show()
-
 
 # Make a new tech returns DataFrame
 tech_rets1 = data.pct_change()
