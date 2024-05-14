@@ -1,3 +1,6 @@
+##SETUP
+
+#Import modules
 import numpy as np # linear algebra
 import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
 import requests
@@ -14,45 +17,32 @@ from tensorflow.keras.layers import LSTM, Dense
 from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import MinMaxScaler
-
 import seaborn as sns
 
-
-
+#Set Seaborn styles
 sns.set_style('whitegrid')
 plt.style.use("fivethirtyeight")
 
-#get the URL using response variable
+#Set the URL
 financials_url = "https://finance.yahoo.com/most-active?count=100"
 
+#Pass the URL to a variable and get its HTML contents
 response = requests.get(financials_url)
 url_contents = response.text
+
+#Write those contents to a file
 with open('yahoo-finance-most-active.html', 'w', encoding="utf-8") as file:
     file.write(url_contents)
 
+#Read that file
 with open('yahoo-finance-most-active.html', 'r') as f:
     html_source = f.read()
 
-#Generalize this task with a function so that it can be used for multiple types of securities
-def download_web_page(url):
-    response = requests.get(url)
-    status_code = response.status_code
-    url_contents = response.text
-    if status_code in range(200,300):
-        url_contents = response.text
-        with open('new-downloaded-web-page.html', 'w', encoding="utf-8") as file:
-            file.write(url_contents)
-        print('Status code is within an okay range of {}.'.format(status_code))
-        
-    else: 
-        return
-
+#Parse that source HTML with BeautifulSoup
 doc = BeautifulSoup(html_source, 'html.parser')
-
-
 title = doc.title
-print(title.text)
 
+#All tickers are enclosed in <tr> tags, so isolate those and strip the text from them
 tr_class_tags = doc.find_all('tr',class_='simpTblRow')
 tr_class_tags[:2]
 tr_tag_amount = len(tr_class_tags)
@@ -62,21 +52,7 @@ td_tag = tr_class_tag1.find_all('td')
 a_tag = td_tag[0].find_all('a', recursive=False)
 ticker_name = a_tag[0].text.strip()
 
-    
-
-def parse_stocks(tr_class_tag):
-    # <td> tags contain all of the stock info, <tr tags contain all of the individual details, <a> tags contain ticker name
-    td_tag = tr_class_tag.find_all('td')
-    a_tag = td_tag[0].find('a', recursive=False)
-    # Stock ticker
-    ticker_name = a_tag.text.strip()
-
-    
-    # Return a dictionary
-    return {
-        'Stock ticker': ticker_name,
-    }
-
+#Now, defining a function to set-up a list of ticker values with list comprehension
 def list_tickers(tr_class_tag):
     td_tag = tr_class_tag.find_all('td')
     a_tag = td_tag[0].find('a', recursive=False)
@@ -86,13 +62,8 @@ def list_tickers(tr_class_tag):
 
 stock_tickers = [list_tickers(x) for x in tr_class_tags]
 
-yFinanceData = []
-print(yFinanceData)
-for x in tr_class_tags:  
-    yFinanceData.append(list_tickers(x))
-
 #Load the Data
-unprocessedData = yf.download(yFinanceData, period="60mo")
+unprocessedData = yf.download(stock_tickers, period="60mo")
 unprocessedAdjCloseData = unprocessedData["Adj Close"]
 #Preprocess Data
 data = unprocessedAdjCloseData.dropna()
@@ -111,8 +82,7 @@ X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_
 
 # 4. Define the deep learning model
 model = Sequential()
-model.add(LSTM(units=50, activation='relu', return_sequences=True, input_shape=(X_train.shape[1], 1)))
-model.add(LSTM(units=50, activation='relu'))
+model.add(LSTM(units=25, activation='relu', return_sequences=True, input_shape=(X_train.shape[1], 1)))
 model.add(Dense(units=1))
 
 # 5. Compile the model
@@ -215,7 +185,6 @@ plt.figure(figsize=(15,4))
 plt.plot(MACD, linewidth=1.0, label='MACD')
 plt.plot(MACD.ewm(span=9, adjust=False).mean(), label='Signal', linewidth=1.0)
 plt.legend()
-
 plt.show()
 
 short_window = 3
@@ -269,21 +238,6 @@ portfolio['holdings'] = (positions.multiply(dataSignals, axis=0)).sum(axis=1)
 portfolio['cash'] = initial_capital - (pos_diff.multiply(dataSignals, axis=0)).sum(axis=1).cumsum()
 portfolio['total'] = portfolio['cash'] + portfolio['holdings']
 portfolio['returns'] = portfolio['total'].pct_change()
-
-''' 
-positionsShort = pd.DataFrame(index=signals.index).fillna(0.0)
-positionsShort['Shorts'] = 100*signals['signalShort']
-portfolioShort = positionsShort.multiply(dataSignals, axis=0)
-posShort_diff = positionsShort.diff()
-portfolioShort['shorts'] = (positionsShort.multiply(dataSignals, axis=0)).sum(axis=1)
-portfolio['cash'] = portfolio['cash'] - (posShort_diff.multiply(dataSignals, axis=0)).sum(axis=1).cumsum()
-portfolioShort['total'] = portfolioShort['shorts']
-portfolioShort['returns'] = portfolioShort['total'].pct_change()
-print(portfolioShort.head(500))
-print(portfolio.head(500))
-capitalGain = pd.DataFrame(index=signals.index).fillna(0.0)
-capitalGain['total'] = (portfolio['total'] - portfolioShort['total'])
-'''
 
 fig = plt.figure(figsize=(15,5))
 ax1 = fig.add_subplot(111, ylabel='Portfolio value in $')
